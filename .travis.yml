@@ -4,6 +4,7 @@ env:
     #- CODECEPTION_VERSION="1.7"
     #- CODECEPTION_VERSION="1.8"
     - CODECEPTION_VERSION="2.0"
+    - CODECEPTION_VERSION="3.0"
     - CODECEPTION_VERSION="dev-master"
 php:
   - 5.5
