@@ -1,15 +1,9 @@
-# Codeception MailCatcher Module
+# Zend Mail Codeception Module
 
-[![Build Status](https://travis-ci.org/captbaritone/codeception-mailcatcher-module.svg)](https://travis-ci.org/captbaritone/codeception-mailcatcher-module)
+[![Build Status](https://travis-ci.org/fetch/zend-mail-codeception-module.svg)](https://travis-ci.org/fetch/zend-mail-codeception-module)
 
 This module will let you test emails that are sent during your Codeception
-acceptance tests. It depends upon you having
-[MailCatcher](http://mailcatcher.me/) installed on your development server.
-
-It was inspired by the Codeception blog post: [Testing Email in
-PHP](http://codeception.com/12-15-2013/testing-emails-in-php). It is currently
-very simple. Send a pull request or file an issue if you have ideas for more
-features.
+acceptance tests.
 
 ## Installation
 
@@ -18,7 +12,7 @@ Add the package into your composer.json:
     {
         "require-dev": {
             "codeception/codeception": "*",
-            "captbaritone/mailcatcher-codeception-module": "1.*"
+            "fetch/zend-mail-codeception-module": "1.*"
         }
     }
 
@@ -26,39 +20,32 @@ Tell Composer to download the package:
 
     php composer.phar update
 
-Then enable it in your `acceptance.suite.yml` configuration and set the url and
-port of your site's MailCatcher installation:
+Update your Zend mail configuration to use a file transport:
 
-    class_name: WebGuy
-    modules:
-        enabled:
-            - MailCatcher
-        config:
-            MailCatcher:
-                url: 'http://project.dev'
-                port: '1080'
+```php
+function mail_filename(){
+  return uniqid() . '.mail';
+}
 
-You will then need to rebuild your actor class:
+$transportOptions = new Zend\Mail\Transport\FileOptions([
+  'path' => 'tests/_output/mail',
+  'callback' => 'mail_filename'
+]);
+$transport = new Zend\Mail\Transport\File($transportOptions);
+```
 
-    php codecept.phar build
+Then enable it in your `acceptance.suite.yml` configuration and set path
+ to the transport directory.
 
-## Optional Configuration
-
-If you need to specify some special options (e.g. SSL verification or authentication
-headers), you can set all of the allowed [Guzzle request options](https://guzzle.readthedocs.org/en/5.3/clients.html#request-options):
-
-    class_name: WebGuy
-    modules:
-        enabled:
-            - MailCatcher
-        config:
-            MailCatcher:
-                url: 'http://project.dev'
-                port: '1080'
-                guzzleRequestOptions:
-                    verify: false
-                    debug: true
-                    version: 1.0
+```yaml
+class_name: WebGuy
+modules:
+  enabled:
+    - ZendMail
+  config:
+    ZendMail:
+      path: 'tests/_output/mail'
+```
 
 You will then need to rebuild your actor class:
 
@@ -66,36 +53,36 @@ You will then need to rebuild your actor class:
 
 ## Example Usage
 
-    <?php
+```php
+$I = new WebGuy($scenario);
+$I->wantTo('Get a password reset email');
 
-    $I = new WebGuy($scenario);
-    $I->wantTo('Get a password reset email');
+// Cleared old emails from path
+$I->resetEmails();
 
-    // Cleared old emails from MailCatcher
-    $I->resetEmails();
+// Reset
+$I->amOnPage('forgotPassword.php');
+$I->fillField("input[name='email']", 'user@example.com');
+$I->click("Submit");
+$I->see("Please check your email");
 
-    // Reset 
-    $I->amOnPage('forgotPassword.php');
-    $I->fillField("input[name='email']", 'user@example.com');
-    $I->click("Submit");
-    $I->see("Please check your email");
-
-    $I->seeInLastEmail("Please click this link to reset your password");
+$I->seeInLastEmail("Please click this link to reset your password");
+```
 
 ## Actions
 
 ### resetEmails
 
-Clears the emails in MailCatcher's list. This is prevents seeing emails sent
+Clears the emails in the messages directory. This is prevents seeing emails sent
 during a previous test. You probably want to do this before you trigger any
 emails to be sent
 
 Example:
 
-    <?php
-    // Clears all emails
-    $I->resetEmails();
-    ?>
+```php
+// Clears all emails
+$I->resetEmails();
+```
 
 ### seeInLastEmail
 
@@ -104,9 +91,9 @@ email: headers, subject line, and body.
 
 Example:
 
-    <?php
-    $I->seeInLastEmail('Thanks for signing up!');
-    ?>
+```php
+$I->seeInLastEmail('Thanks for signing up!');
+```
 
 * Param $text
 
@@ -120,10 +107,10 @@ and to the administrator.
 
 Example:
 
-    <?php
-    $I->seeInLastEmailTo('user@example.com', 'Thanks for signing up!');
-    $I->seeInLastEmailTo('admin@example.com', 'A new user has signed up!');
-    ?>
+```php
+$I->seeInLastEmailTo('user@example.com', 'Thanks for signing up!');
+$I->seeInLastEmailTo('admin@example.com', 'A new user has signed up!');
+```
 
 * Param $email
 * Param $text
@@ -135,9 +122,9 @@ email: headers, subject line, and body.
 
 Example:
 
-    <?php
-    $I->dontSeeInLastEmail('Hit me with those laser beams');
-    ?>
+```php
+$I->dontSeeInLastEmail('Hit me with those laser beams');
+```
 
 * Param $text
 
@@ -148,9 +135,9 @@ full raw text of the email: headers, subject line, and body.
 
 Example:
 
-    <?php
-    $I->dontSeeInLastEmailTo('admin@example.com', 'But shoot it in the right direction');
-    ?>
+```php
+$I->dontSeeInLastEmailTo('admin@example.com', 'But shoot it in the right direction');
+```
 
 * Param $email
 * Param $text
@@ -164,9 +151,9 @@ subject line, and body. The return value is an array like that returned by
 
 Example:
 
-    <?php
-    $matches = $I->grabMatchesFromLastEmail('@<strong>(.*)</strong>@');
-    ?>
+```php
+$matches = $I->grabMatchesFromLastEmail('@<strong>(.*)</strong>@');
+```
 
 * Param $regex
 
@@ -177,9 +164,9 @@ It searches the full raw text of the email: headers, subject line, and body.
 
 Example:
 
-    <?php
-    $match = $I->grabFromLastEmail('@<strong>(.*)</strong>@');
-    ?>
+```php
+$match = $I->grabFromLastEmail('@<strong>(.*)</strong>@');
+```
 
 * Param $regex
 
@@ -192,9 +179,9 @@ returned by `preg_match()`.
 
 Example:
 
-    <?php
-    $matchs = $I->grabMatchesFromLastEmailTo('user@example.com', '@<strong>(.*)</strong>@');
-    ?>
+```php
+$matchs = $I->grabMatchesFromLastEmailTo('user@example.com', '@<strong>(.*)</strong>@');
+```
 
 * Param $email
 * Param $regex
@@ -207,9 +194,9 @@ line, and body.
 
 Example:
 
-    <?php
-    $match = $I->grabFromLastEmailTo('user@example.com', '@<strong>(.*)</strong>@');
-    ?>
+```php
+$match = $I->grabFromLastEmailTo('user@example.com', '@<strong>(.*)</strong>@');
+```
 
 * Param $email
 * Param $regex
@@ -221,12 +208,12 @@ Asserts that a certain number of emails have been sent since the last time
 
 Example:
 
-    <?php
-    $match = $I->seeEmailCount(2);
-    ?>
+```php
+$match = $I->seeEmailCount(2);
+```
 
 * Param $count
 
 # License
 
-Released under the same liceces as Codeception: MIT
+Released under the same license as Codeception: MIT

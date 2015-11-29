@@ -1,9 +1,8 @@
 cass_name: NoGuy
 modules:
     enabled:
-        - MailCatcher
+        - ZendMail
         - Asserts
     config:
-        MailCatcher:
-            url: 'http://localhost'
-            port: '1080'
+        ZendMail:
+            path: 'tests/_output'

@@ -2,50 +2,50 @@
 
 namespace Codeception\Module;
 
+use Zend\Mail\Message;
+
 use Codeception\Module;
 
-class MailCatcher extends Module
+class ZendMail extends Module
 {
+
     /**
-     * @var \Guzzle\Http\Client
+     * @var string
      */
-    protected $mailcatcher;
+    protected $path;
 
     /**
      * @var array
      */
-    protected $config = array('url', 'port', 'guzzleRequestOptions');
+    protected $config = array('path');
 
     /**
      * @var array
      */
-    protected $requiredFields = array('url', 'port');
+    protected $requiredFields = array('path');
 
     public function _initialize()
     {
-        $url = trim($this->config['url'], '/') . ':' . $this->config['port'];
-        $this->mailcatcher = new \Guzzle\Http\Client($url);
-
-        if (isset($this->config['guzzleRequestOptions'])) {
-            foreach ($this->config['guzzleRequestOptions'] as $option => $value) {
-                $this->mailcatcher->setDefaultOption($option, $value);
-            }
-        }
+        $this->path = realpath($this->config['path']);
     }
-
 
     /**
      * Reset emails
      *
-     * Clear all emails from mailcatcher. You probably want to do this before
+     * Clear email directory. You probably want to do this before
      * you do the thing that will send emails
      *
      * @return void
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @author Koen Punt
      **/
     public function resetEmails()
     {
-        $this->mailcatcher->delete('/messages')->send();
+        $emails = glob($this->path . '/*.mail');
+        foreach($emails as $email){
+            if(is_file($email)){
+                unlink($email);
+            }
+        }
     }
 
 
@@ -235,19 +235,17 @@ class MailCatcher extends Module
     /**
      * Messages
      *
-     * Get an array of all the message objects
+     * Get an array of all the messages
      *
      * @return array
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @author Koen Punt
      **/
     protected function messages()
     {
-        $response = $this->mailcatcher->get('/messages')->send();
-        $messages = $response->json();
-        // Ensure messages are shown in the order they were recieved
-        // https://github.com/sj26/mailcatcher/pull/184
-        usort($messages, array($this, 'messageSortCompare'));
-        return $messages;
+        $messages = glob($this->path . '/*.mail');
+        return array_map(function ($message) {
+            return $this->emailFromFile($message);
+        }, $messages);
     }
 
     /**
@@ -255,19 +253,17 @@ class MailCatcher extends Module
      *
      * Get the most recent email
      *
-     * @return obj
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @return Zend\Mail\Message
+     * @author Koen Punt
      **/
     protected function lastMessage()
     {
         $messages = $this->messages();
         if (empty($messages)) {
-            $this->fail("No messages received");
+            $this->fail('No messages received');
         }
 
-        $last = array_shift($messages);
-
-        return $this->emailFromId($last['id']);
+        return end($messages);
     }
 
     /**
@@ -275,45 +271,40 @@ class MailCatcher extends Module
      *
      * Get the most recent email sent to $address
      *
-     * @return obj
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @return Zend\Mail\Message
+     * @author Koen Punt
      **/
     protected function lastMessageFrom($address)
     {
-        $ids = [];
+        $messagesFrom = [];
         $messages = $this->messages();
         if (empty($messages)) {
-            $this->fail("No messages received");
+            $this->fail('No messages received');
         }
 
         foreach ($messages as $message) {
-            foreach ($message['recipients'] as $recipient) {
-                if (strpos($recipient, $address) !== false) {
-                    $ids[] = $message['id'];
-                }
+            if ($message->getTo()->has($address)) {
+                $messagesFrom[] = $message;
             }
         }
 
-        if (count($ids) > 0)
-            return $this->emailFromId(max($ids));
+        if (!empty($messagesFrom))
+            return max($messagesFrom);
 
         $this->fail("No messages sent to {$address}");
     }
 
     /**
-     * Email from ID
+     * Email from file
      *
-     * Given a mailcatcher id, returns the email's object
+     * Given a filename, returns the email's object
      *
-     * @return obj
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @return Zend\Mail\Message
+     * @author Koen Punt
      **/
-    protected function emailFromId($id)
+    protected function emailFromFile($email)
     {
-        $response = $this->mailcatcher->get("/messages/{$id}.json")->send();
-        $message = $response->json();
-        $message['source'] = quoted_printable_decode($message['source']);
-        return $message;
+        return Message::fromString(file_get_contents($email));
     }
 
     /**
@@ -322,11 +313,11 @@ class MailCatcher extends Module
      * Look for a string in an email subject
      *
      * @return void
-     * @author Antoine Augusti <antoine.augusti@gmail.com>
+     * @author Koen Punt
      **/
     protected function seeInEmailSubject($email, $expected)
     {
-        $this->assertContains($expected, $email['subject'], "Email Subject Contains");
+        $this->assertContains($expected, $email->getSubject(), "Email Subject Contains");
     }
 
     /**
@@ -335,10 +326,11 @@ class MailCatcher extends Module
      * Look for the absence of a string in an email subject
      *
      * @return void
+     * @author Koen Punt
      **/
-    protected function dontSeeInEmailSubject($email, $unexpected)
+    protected function dontSeeInEmailSubject(Message $email, $unexpected)
     {
-        $this->assertNotContains($unexpected, $email['subject'], "Email Subject Does Not Contain");
+        $this->assertNotContains($unexpected, $email->getSubject(), "Email Subject Does Not Contain");
     }
 
     /**
@@ -347,11 +339,11 @@ class MailCatcher extends Module
      * Look for a string in an email
      *
      * @return void
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @author Koen Punt
      **/
-    protected function seeInEmail($email, $expected)
+    protected function seeInEmail(Message $email, $expected)
     {
-        $this->assertContains($expected, $email['source'], "Email Contains");
+        $this->assertContains($expected, $email->getBody(), "Email Contains");
     }
 
     /**
@@ -360,10 +352,11 @@ class MailCatcher extends Module
      * Look for the absence of a string in an email
      *
      * @return void
+     * @author Koen Punt
      **/
-    protected function dontSeeInEmail($email, $unexpected)
+    protected function dontSeeInEmail(Message $email, $unexpected)
     {
-        $this->assertNotContains($unexpected, $email['source'], "Email Does Not Contain");
+        $this->assertNotContains($unexpected, $email->getBody(), "Email Does Not Contain");
     }
 
     /**
@@ -372,19 +365,13 @@ class MailCatcher extends Module
      * Return the matches of a regex against the raw email
      *
      * @return void
-     * @author Jordan Eldredge <jordaneldredge@gmail.com>
+     * @author Koen Punt
      **/
-    protected function grabMatchesFromEmail($email, $regex)
+    protected function grabMatchesFromEmail(Message $email, $regex)
     {
-        preg_match($regex, $email['source'], $matches);
+        preg_match($regex, $email->getBody(), $matches);
         $this->assertNotEmpty($matches, "No matches found for $regex");
         return $matches;
-    }
-
-    static function messageSortCompare($messageA, $messageB) {
-        $sortKeyA = $messageA['created_at'] . $messageA['id'];
-        $sortKeyB = $messageB['created_at'] . $messageB['id'];
-        return ($sortKeyA > $sortKeyB) ? -1 : 1;
     }
 
 }

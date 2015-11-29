@@ -1,10 +1,10 @@
 {
-    "name": "codeception-mailcatcher-module/test",
-    "description": "Test suite for the codeception-mailcatcher-module",
+    "name": "zend-mail-codeception-module/test",
+    "description": "Test suite for the zend-mail-codeception-module",
     "authors": [
         {
-            "name": "Jordan Eldredge",
-            "email": "jordan@jordaneldredge.com"
+            "name": "Koen Punt",
+            "email": "koen@fetch.nl"
         }
     ],
     "repositories": [
@@ -15,6 +15,7 @@
     ],
     "require": {
         "codeception/codeception": "*",
-        "captbaritone/mailcatcher-codeception-module": "dev-master"
+        "zendframework/zend-mail": "^2.3",
+        "fetch/zend-mail-codeception-module": "dev-master"
     }
 }

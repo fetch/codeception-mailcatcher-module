@@ -1,14 +1,14 @@
 {
-    "name": "captbaritone/mailcatcher-codeception-module",
+    "name": "fetch/zend-mail-codeception-module",
     "description": "Test emails in your Codeception acceptance tests",
     "authors": [
         {
-            "name": "Jordan Eldredge",
-            "email": "jordan@jordaneldredge.com"
+            "name": "Koen Punt",
+            "email": "koen@fetch.nl"
         }
     ],
     "require": {
-        "guzzle/guzzle": "3.*"
+        "zendframework/zend-mail": "^2.0"
     },
     "autoload": {
         "psr-4": {
