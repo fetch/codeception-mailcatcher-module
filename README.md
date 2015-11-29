@@ -12,7 +12,7 @@ Add the package into your composer.json:
     {
         "require-dev": {
             "codeception/codeception": "*",
-            "fetch/zend-mail-codeception-module": "1.*"
+            "fetch/zend-mail-codeception-module": "^1.0"
         }
     }
 
